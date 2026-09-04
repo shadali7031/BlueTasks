@@ -1,0 +1,14 @@
+{
+  "name": "bluetasks-supabase-vercel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BlueTasks Telegram Mini App with Supabase PostgreSQL and Vercel",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0",
+    "express": "^5.1.0"
+  }
+}

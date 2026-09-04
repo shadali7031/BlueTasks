@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>BlueTasks</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <div class="brand">BlueTasks</div>
+        <div class="sub">Earn BLC • Complete tasks • Withdraw</div>
+      </div>
+      <div class="avatar" id="avatar">BT</div>
+    </header>
+
+    <main>
+      <section class="balance card">
+        <div class="label">Your Balance</div>
+        <div class="money"><span id="balance">0</span> <small>BLC</small></div>
+        <div class="mini">Minimum withdrawal: 1500 BLC</div>
+      </section>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="home">Home</button>
+        <button class="tab" data-tab="tasks">Tasks</button>
+        <button class="tab" data-tab="wallet">Wallet</button>
+        <button class="tab" data-tab="profile">Profile</button>
+      </div>
+
+      <section id="home" class="page">
+        <div class="card hero">
+          <h2>Complete tasks & earn</h2>
+          <p>Premium 3-minute task gives <b>30 BLC</b>. Daily limit: 3.</p>
+          <button class="primary" onclick="openTab('tasks')">View Tasks</button>
+        </div>
+        <div class="grid">
+          <div class="stat card"><b id="todayEarned">0</b><span>Today claims</span></div>
+          <div class="stat card"><b id="refCount">0</b><span>Referrals</span></div>
+        </div>
+        <div class="card">
+          <h3>Referral</h3>
+          <p>Invite friends and build your referral network.</p>
+          <button class="secondary" onclick="copyReferral()">Copy referral link</button>
+        </div>
+      </section>
+
+      <section id="tasks" class="page hidden">
+        <div class="sectionTitle"><h2>Tasks</h2><span id="taskHint"></span></div>
+        <div id="taskList"></div>
+      </section>
+
+      <section id="wallet" class="page hidden">
+        <div class="card">
+          <h2>Withdraw</h2>
+          <input id="amount" type="number" min="1500" placeholder="Amount (min 1500)">
+          <textarea id="payout" placeholder="UPI / payout details"></textarea>
+          <button class="primary" onclick="withdraw()">Request withdrawal</button>
+        </div>
+        <div class="card">
+          <h3>Withdrawal history</h3>
+          <div id="withdrawals"></div>
+        </div>
+      </section>
+
+      <section id="profile" class="page hidden">
+        <div class="card profile">
+          <div class="bigAvatar" id="bigAvatar">BT</div>
+          <h2 id="name">Telegram User</h2>
+          <p id="username">@username</p>
+          <p class="muted" id="tgid"></p>
+        </div>
+        <div class="card">
+          <h3>Referral link</h3>
+          <input id="refLink" readonly>
+          <button class="secondary" onclick="copyReferral()">Copy</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

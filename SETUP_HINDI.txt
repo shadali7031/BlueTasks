@@ -1,0 +1,23 @@
+BLUETASKS A-TO-Z SETUP
+
+1) Supabase me naya project banao.
+2) Supabase -> SQL Editor -> supabase/schema.sql ka pura code paste karo -> Run.
+3) Supabase -> Project Settings -> API se Project URL aur service_role key copy karo.
+4) GitHub me is pure folder ko upload karo.
+5) Vercel me GitHub repo Import karo.
+6) Vercel Environment Variables me:
+   BOT_TOKEN = naya Telegram bot token
+   BOT_USERNAME = bot ka username, @ ke bina
+   SUPABASE_URL = Supabase URL
+   SUPABASE_SERVICE_ROLE_KEY = service_role key
+   ADMIN_IDS = apna Telegram numeric ID
+7) Deploy karo.
+8) BotFather me Mini App/Menu Button ka URL Vercel ka HTTPS URL lagao.
+9) Telegram me bot open karke Mini App launch karo.
+
+IMPORTANT:
+- Purana exposed bot token use mat karo; revoke karke naya token use karo.
+- SUPABASE_SERVICE_ROLE_KEY kisi HTML/JS file me mat daalna.
+- /api/task/complete abhi demo reward endpoint hai. Real ad ke liye ad provider ka verified server-to-server callback/postback integrate karna hoga.
+- Minimum withdrawal 1500 BLC hai.
+- Premium task 30 BLC aur 3/day hai.
