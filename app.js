@@ -8,6 +8,73 @@ let state = {
   referralLink: ""
 };
 
+const TADS_TGB_ID = "11984";
+const TADS_FULLSCREEN_ID = "11986";
+let tadsFullscreenController = null;
+let pendingTadsTaskId = null;
+
+function initTadsBanner() {
+  try {
+    if (!window.tads || typeof window.tads.init !== "function") return;
+    const container = document.getElementById(`tads-container-${TADS_TGB_ID}`);
+    if (!container || container.dataset.tadsReady === "1") return;
+    container.dataset.tadsReady = "1";
+    const controller = window.tads.init({
+      widgetId: TADS_TGB_ID,
+      type: "static",
+      debug: false,
+      onClickReward: (adId) => console.log("TADS TGB click:", adId),
+      onAdsNotFound: () => console.log("TADS TGB: no ad found")
+    });
+    controller.loadAd().then(() => controller.showAd()).catch(err => console.log("TADS TGB:", err));
+  } catch (e) {
+    console.log("TADS banner init:", e);
+  }
+}
+
+async function showTadsFullscreen(taskId) {
+  if (!window.tads || typeof window.tads.init !== "function") {
+    toast("Ad system is loading. Try again.");
+    return;
+  }
+  pendingTadsTaskId = taskId;
+  try {
+    if (!tadsFullscreenController) {
+      tadsFullscreenController = window.tads.init({
+        widgetId: TADS_FULLSCREEN_ID,
+        type: "fullscreen",
+        debug: false,
+        onShowReward: async (result) => {
+          const rewardedTask = pendingTadsTaskId;
+          pendingTadsTaskId = null;
+          if (!rewardedTask) return;
+          try {
+            const d = await api("/api/task/complete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ taskId: rewardedTask, adProvider: "tads", adResult: result || null })
+            });
+            toast("Reward credited: " + (d.result?.reward || 0) + " BLC");
+            await load();
+          } catch (e) {
+            toast(e.message);
+          }
+        },
+        onAdsNotFound: () => {
+          pendingTadsTaskId = null;
+          toast("No ad available right now. Try again later.");
+        }
+      });
+    }
+    await tadsFullscreenController.loadAd();
+    await tadsFullscreenController.showAd();
+  } catch (e) {
+    pendingTadsTaskId = null;
+    console.error("TADS fullscreen:", e);
+    toast("Unable to show ad right now. Try again later.");
+  }
+}
+
 if (tg) {
   tg.ready();
   tg.expand();
@@ -228,15 +295,25 @@ function renderTasks() {
         <button
           class="primary small"
           ${remaining <= 0 ? "disabled" : ""}
-          onclick="completeTask('${escapeHtml(t.id)}')"
+          onclick="startTask('${escapeHtml(t.id)}')"
         >
-          ${remaining <= 0 ? "Limit reached" : "Start task"}
+          ${remaining <= 0 ? "Limit reached" : (t.id === "premium3" ? "🎬 Watch Ad & Earn" : "Start task")}
         </button>
       </div>
     `;
 
     list.appendChild(div);
   }
+}
+
+async function startTask(taskId) {
+  const task = (state.tasks || []).find(t => t.id === taskId);
+  if (!task) return;
+  if (task.id === "premium3") {
+    await showTadsFullscreen(task.id);
+    return;
+  }
+  await completeTask(taskId);
 }
 
 async function completeTask(taskId) {
@@ -329,3 +406,4 @@ function escapeHtml(s) {
 }
 
 load();
+setTimeout(initTadsBanner, 800);
