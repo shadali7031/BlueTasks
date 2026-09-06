@@ -1,5 +1,9 @@
 const tg = window.Telegram?.WebApp;
 
+const ADSGRAM_BLOCK_ID = "46524";
+let adsgramController = null;
+let adInProgress = false;
+
 let state = {
   user: null,
   tasks: [],
@@ -8,125 +12,11 @@ let state = {
   referralLink: ""
 };
 
-const TADS_TGB_ID = "11984";
-const TADS_FULLSCREEN_ID = "11990";
-let tadsFullscreenController = null;
-let pendingTadsTaskId = null;
-let tadsAdInProgress = false;
-
-function initTadsBanner() {
-  try {
-    if (!window.tads || typeof window.tads.init !== "function") return;
-    const container = document.getElementById(`tads-container-${TADS_TGB_ID}`);
-    if (!container || container.dataset.tadsReady === "1") return;
-    container.dataset.tadsReady = "1";
-    const controller = window.tads.init({
-      widgetId: TADS_TGB_ID,
-      type: "static",
-      debug: false,
-      onClickReward: (adId) => console.log("TADS TGB click:", adId),
-      onAdsNotFound: () => console.log("TADS TGB: no ad found")
-    });
-    controller.loadAd().then(() => controller.showAd()).catch(err => console.log("TADS TGB:", err));
-  } catch (e) {
-    console.log("TADS banner init:", e);
-  }
-}
-
-async function showTadsFullscreen(taskId) {
-  if (tadsAdInProgress) {
-    toast("An ad is already running. Please wait.");
-    return;
-  }
-
-  if (!window.tads || typeof window.tads.init !== "function") {
-    toast("Ad system is loading. Try again.");
-    return;
-  }
-
-  pendingTadsTaskId = taskId;
-  tadsAdInProgress = true;
-
-  const handleReward = async (result) => {
-    const rewardedTask = pendingTadsTaskId;
-    pendingTadsTaskId = null;
-    tadsAdInProgress = false;
-    if (!rewardedTask) return;
-
-    try {
-      const d = await api("/api/task/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskId: rewardedTask,
-          adProvider: "tads",
-          adResult: result || null
-        })
-      });
-      toast("Reward credited: " + (d.result?.reward || 0) + " BLC");
-      await load();
-    } catch (e) {
-      toast(e.message);
-    }
-  };
-
-  const handleNoAd = () => {
-    pendingTadsTaskId = null;
-    tadsAdInProgress = false;
-    toast("No ad available right now. Try again later.");
-  };
-
-  const createController = () => window.tads.init({
-    widgetId: TADS_FULLSCREEN_ID,
-    type: "fullscreen",
-    debug: false,
-    onShowReward: handleReward,
-    onAdsNotFound: handleNoAd
-  });
-
-  try {
-    // Use TADS' existing controller when available. If a previous controller
-    // becomes stale/rejects, recreate it once and retry the show operation.
-    tadsFullscreenController =
-      window.tads.controllers?.[TADS_FULLSCREEN_ID] ||
-      tadsFullscreenController ||
-      createController();
-
-    if (!tadsFullscreenController || typeof tadsFullscreenController.showAd !== "function") {
-      throw new Error("TADS fullscreen controller is not ready");
-    }
-
-    try {
-      const result = tadsFullscreenController.showAd();
-      if (result && typeof result.catch === "function") {
-        await result;
-      }
-    } catch (firstError) {
-      console.warn("TADS first show failed, recreating controller:", firstError);
-      tadsFullscreenController = createController();
-      const retry = tadsFullscreenController?.showAd?.();
-      if (retry && typeof retry.catch === "function") {
-        await retry;
-      }
-    }
-  } catch (e) {
-    pendingTadsTaskId = null;
-    tadsAdInProgress = false;
-    console.error("TADS fullscreen error:", e);
-    toast("No ad available right now. Try again later.");
-  }
-}
-
 if (tg) {
   tg.ready();
   tg.expand();
-
-  try {
-    tg.setHeaderColor("#087cf5");
-    tg.setBackgroundColor("#f4f8ff");
-  } catch (e) {
-    console.log("Telegram UI settings unavailable");
-  }
+  tg.setHeaderColor("#087cf5");
+  tg.setBackgroundColor("#f4f8ff");
 }
 
 function initData() {
@@ -151,85 +41,37 @@ async function api(url, options = {}) {
 
 function toast(msg) {
   const el = document.getElementById("toast");
-  if (!el) return;
-
   el.textContent = msg;
   el.classList.add("show");
-
-  setTimeout(() => {
-    el.classList.remove("show");
-  }, 2200);
+  setTimeout(() => el.classList.remove("show"), 2600);
 }
 
 function openTab(tab) {
+  document.querySelectorAll(".page").forEach(x => x.classList.add("hidden"));
   const page = document.getElementById(tab);
+  if (page) page.classList.remove("hidden");
 
-  if (!page) {
-    console.log("Tab not found:", tab);
-    return;
-  }
+  document.querySelectorAll(".tab").forEach(x =>
+    x.classList.toggle("active", x.dataset.tab === tab)
+  );
 
-  document.querySelectorAll(".page").forEach(x => {
-    x.classList.add("hidden");
-  });
-
-  page.classList.remove("hidden");
-
-  document.querySelectorAll(".tab").forEach(x => {
-    x.classList.toggle("active", x.dataset.tab === tab);
-  });
-}
-
-document.querySelectorAll(".tab").forEach(button => {
-  button.onclick = () => openTab(button.dataset.tab);
-});
-
-function getStartAppSection() {
-  try {
-    if (tg?.initDataUnsafe?.start_param) {
-      return String(tg.initDataUnsafe.start_param).toLowerCase().trim();
-    }
-
-    const params = new URLSearchParams(window.location.search);
-
-    return (
-      params.get("startapp") ||
-      params.get("start") ||
-      ""
-    ).toLowerCase().trim();
-  } catch (e) {
-    console.log("Unable to read startapp:", e);
-    return "";
+  if (tab === "referral") {
+    document.getElementById("referralPageCount").textContent =
+      state.user?.referral_count || 0;
+    document.getElementById("referralPageLink").value =
+      state.referralLink || "";
   }
 }
 
-function openStartAppSection() {
-  const section = getStartAppSection();
-  if (!section) return;
+document.querySelectorAll(".tab").forEach(
+  b => (b.onclick = () => openTab(b.dataset.tab))
+);
 
-  switch (section) {
-    case "home":
-      openTab("home");
-      break;
-    case "tasks":
-      openTab("tasks");
-      break;
-    case "wallet":
-      openTab("wallet");
-      break;
-    case "referral":
-      openTab("referral");
-      break;
-    case "profile":
-      openTab("profile");
-      break;
-    case "help":
-      openTab("help");
-      break;
-    default:
-      console.log("Unknown startapp:", section);
-      break;
-  }
+function getTodayEarned() {
+  return (state.claimsToday || []).reduce(
+    (sum, claim) => sum + Number(claim.reward || 0),
+    0
+  );
 }
 
 async function load() {
@@ -242,10 +84,6 @@ async function load() {
     const d = await api("/api/me");
     state = d;
     render();
-
-    setTimeout(() => {
-      openStartAppSection();
-    }, 100);
   } catch (e) {
     toast(e.message);
   }
@@ -253,74 +91,64 @@ async function load() {
 
 function render() {
   const u = state.user || {};
+  const todayEarned = getTodayEarned();
 
-  const balance = document.getElementById("balance");
-  if (balance) balance.textContent = u.balance || 0;
-
-  const refCount = document.getElementById("refCount");
-  if (refCount) refCount.textContent = u.referral_count || 0;
-
-  const todayEarned = document.getElementById("todayEarned");
-  if (todayEarned) {
-    const earnedToday = (state.claimsToday || []).reduce((sum, c) => sum + Number(c.reward || 0), 0);
-    todayEarned.textContent = `${earnedToday} / 240 BLC`;
-  }
+  document.getElementById("balance").textContent = u.balance || 0;
+  document.getElementById("refCount").textContent = u.referral_count || 0;
+  document.getElementById("todayEarned").textContent =
+    `${todayEarned} / 240`;
 
   const initials = (
-    (u.first_name || "B")[0] +
-    (u.last_name || "T")[0]
+    (u.first_name || "B")[0] + (u.last_name || "T")[0]
   ).toUpperCase();
 
-  const avatar = document.getElementById("avatar");
-  if (avatar) avatar.textContent = initials;
-
-  const bigAvatar = document.getElementById("bigAvatar");
-  if (bigAvatar) bigAvatar.textContent = initials;
-
-  const name = document.getElementById("name");
-  if (name) {
-    name.textContent =
-      [u.first_name, u.last_name].filter(Boolean).join(" ") ||
-      "Telegram User";
-  }
-
-  const username = document.getElementById("username");
-  if (username) {
-    username.textContent = u.username ? "@" + u.username : "No username";
-  }
-
-  const tgid = document.getElementById("tgid");
-  if (tgid) tgid.textContent = "Telegram ID: " + u.telegram_id;
-
-  const refLink = document.getElementById("refLink");
-  if (refLink) refLink.value = state.referralLink || "";
-
-  const referralPageCount = document.getElementById("referralPageCount");
-  if (referralPageCount) referralPageCount.textContent = u.referral_count || 0;
-
-  const referralPageLink = document.getElementById("referralPageLink");
-  if (referralPageLink) referralPageLink.value = state.referralLink || "";
-
-  const taskHint = document.getElementById("taskHint");
-  if (taskHint) taskHint.textContent = "Daily max: 240 BLC";
+  document.getElementById("avatar").textContent = initials;
+  document.getElementById("bigAvatar").textContent = initials;
+  document.getElementById("name").textContent =
+    [u.first_name, u.last_name].filter(Boolean).join(" ") ||
+    "Telegram User";
+  document.getElementById("username").textContent = u.username
+    ? "@" + u.username
+    : "No username";
+  document.getElementById("tgid").textContent =
+    "Telegram ID: " + u.telegram_id;
+  document.getElementById("refLink").value = state.referralLink || "";
+  document.getElementById("referralPageCount").textContent =
+    u.referral_count || 0;
+  document.getElementById("referralPageLink").value =
+    state.referralLink || "";
 
   renderTasks();
   renderWithdrawals();
 }
 
 function claimCount(taskId) {
-  return (state.claimsToday || []).filter(x => x.task_id === taskId).length;
+  return (state.claimsToday || []).filter(
+    x => x.task_id === taskId
+  ).length;
 }
 
 function renderTasks() {
   const list = document.getElementById("taskList");
-  if (!list) return;
-
   list.innerHTML = "";
+
+  const todayEarned = getTodayEarned();
 
   for (const t of state.tasks || []) {
     const used = claimCount(t.id);
-    const remaining = Math.max(0, t.daily_limit - used);
+    const remaining = Math.max(
+      0,
+      Number(t.daily_limit || 0) - used
+    );
+
+    const blockedByDailyCap =
+      todayEarned + Number(t.reward || 0) > 240;
+
+    const disabled = remaining <= 0 || blockedByDailyCap;
+
+    let buttonText = "Start task";
+    if (remaining <= 0) buttonText = "Limit reached";
+    else if (blockedByDailyCap) buttonText = "Daily max reached";
 
     const div = document.createElement("div");
     div.className = "task card";
@@ -329,23 +157,20 @@ function renderTasks() {
       <div class="taskTop">
         <div>
           <h3>${escapeHtml(t.name)}</h3>
-          <p>${escapeHtml(t.description || "Complete task and earn BLC")}</p>
+          <p>${escapeHtml(
+            t.description || "Complete task and earn BLC"
+          )}</p>
         </div>
-        <div class="reward">
-          +${t.reward}
-          <small>BLC</small>
-        </div>
+        <div class="reward">+${Number(t.reward)}<small>BLC</small></div>
       </div>
-
       <div class="taskBottom">
-        <span>${remaining}/${t.daily_limit} left today</span>
-
+        <span>${remaining}/${Number(t.daily_limit)} left today</span>
         <button
           class="primary small"
-          ${remaining <= 0 ? "disabled" : ""}
-          onclick="startTask('${escapeHtml(t.id)}')"
+          ${disabled ? "disabled" : ""}
+          onclick="startTask('${escapeJs(t.id)}')"
         >
-          ${remaining <= 0 ? "Limit reached" : "🎬 Watch Ad & Earn"}
+          ${buttonText}
         </button>
       </div>
     `;
@@ -354,45 +179,93 @@ function renderTasks() {
   }
 }
 
+function getAdsgramController() {
+  if (!window.Adsgram || typeof window.Adsgram.init !== "function") {
+    throw new Error("AdsGram is still loading. Please try again.");
+  }
+
+  if (!adsgramController) {
+    adsgramController = window.Adsgram.init({
+      blockId: ADSGRAM_BLOCK_ID,
+      debug: false
+    });
+  }
+
+  return adsgramController;
+}
+
 async function startTask(taskId) {
+  if (adInProgress) {
+    toast("An ad is already running. Please wait.");
+    return;
+  }
+
   const task = (state.tasks || []).find(t => t.id === taskId);
   if (!task) return;
 
   const used = claimCount(taskId);
+  const todayEarned = getTodayEarned();
+
   if (used >= Number(task.daily_limit || 0)) {
     toast("Daily limit reached");
     return;
   }
 
-  // Every earning task must pass through the TADS fullscreen ad first.
-  // The reward is credited only from the TADS onShowReward callback.
-  await showTadsFullscreen(taskId);
-}
+  if (todayEarned + Number(task.reward || 0) > 240) {
+    toast("Daily earning limit is 240 BLC");
+    return;
+  }
 
-async function completeTask(taskId) {
+  adInProgress = true;
+
   try {
+    const controller = getAdsgramController();
+
+    toast("Loading reward ad...");
+
+    const result = await controller.show();
+
+    if (result?.error || result?.done === false) {
+      throw new Error("Ad was not completed");
+    }
+
+    // AdsGram Reward promise resolves after the rewarded ad is watched
+    // to the end. Only then ask the BlueTasks server to credit the task.
     const d = await api("/api/task/complete", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ taskId })
+      body: JSON.stringify({
+        taskId,
+        adProvider: "adsgram",
+        adBlockId: ADSGRAM_BLOCK_ID
+      })
     });
 
-    toast("Reward credited: " + (d.result?.reward || 0) + " BLC");
+    toast(
+      "Reward credited: " +
+      Number(d.result?.reward || 0) +
+      " BLC"
+    );
+
     await load();
   } catch (e) {
-    toast(e.message);
+    console.error("AdsGram reward error:", e);
+    toast(e.message || "Ad could not be completed");
+  } finally {
+    adInProgress = false;
   }
 }
 
 async function withdraw() {
-  const amount = Number(document.getElementById("amount")?.value);
-  const payoutDetails = document.getElementById("payout")?.value.trim();
+  const amount = Number(document.getElementById("amount").value);
+  const payoutDetails = document
+    .getElementById("payout")
+    .value.trim();
 
   if (!amount || !payoutDetails) {
-    toast("Enter amount and payout details");
-    return;
+    return toast("Enter amount and payout details");
   }
 
   try {
@@ -401,17 +274,15 @@ async function withdraw() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ amount, payoutDetails })
+      body: JSON.stringify({
+        amount,
+        payoutDetails
+      })
     });
 
     toast("Withdrawal request submitted");
-
-    const amountEl = document.getElementById("amount");
-    const payoutEl = document.getElementById("payout");
-
-    if (amountEl) amountEl.value = "";
-    if (payoutEl) payoutEl.value = "";
-
+    document.getElementById("amount").value = "";
+    document.getElementById("payout").value = "";
     await load();
   } catch (e) {
     toast(e.message);
@@ -420,43 +291,47 @@ async function withdraw() {
 
 function renderWithdrawals() {
   const el = document.getElementById("withdrawals");
-  if (!el) return;
 
   if (!state.withdrawals?.length) {
     el.innerHTML = '<p class="muted">No withdrawals yet.</p>';
     return;
   }
 
-  el.innerHTML = state.withdrawals.map(w => `
-    <div class="history">
-      <b>${w.amount} BLC</b>
-      <span>${escapeHtml(w.status)}</span>
-    </div>
-  `).join("");
+  el.innerHTML = state.withdrawals
+    .map(
+      w => `
+        <div class="history">
+          <b>${Number(w.amount)} BLC</b>
+          <span>${escapeHtml(w.status)}</span>
+        </div>
+      `
+    )
+    .join("");
 }
 
 function copyReferral() {
   if (!state.referralLink) return;
 
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(state.referralLink);
-  }
-
+  navigator.clipboard?.writeText(state.referralLink);
   toast("Referral link copied");
 }
 
 function escapeHtml(s) {
   return String(s).replace(
     /[&<>"']/g,
-    m => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[m])
+    m =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[m]
   );
 }
 
+function escapeJs(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
 load();
-setTimeout(initTadsBanner, 800);
