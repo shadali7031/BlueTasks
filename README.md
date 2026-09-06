@@ -54,3 +54,56 @@ Then open the bot in Telegram and launch the Mini App.
 - If an old bot token was exposed, revoke it and use the new token.
 - Admin API checks Telegram ID against `ADMIN_IDS`.
 - Telegram initData is verified server-side.
+
+
+  # BlueTasks Updated
+
+This package updates the BlueTasks Telegram Mini App so bot commands can open the correct Mini App section.
+
+## Commands
+
+- /start -> Home
+- /tasks -> Tasks
+- /wallet -> Wallet
+- /referral -> Referral
+- /profile -> Profile
+- /help -> Help
+
+## Important environment variables
+
+Set these in Vercel:
+
+- BOT_TOKEN
+- BOT_USERNAME
+- WEBAPP_URL
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- ADMIN_IDS
+
+Do not put real secrets in this ZIP or GitHub.
+
+## Telegram webhook
+
+After deploying, open these endpoints once while authenticated as the project owner/admin:
+
+POST /api/telegram/set-webhook
+POST /api/telegram/set-commands
+
+The webhook URL becomes:
+
+WEBAPP_URL + /api/telegram/webhook
+
+## Existing task reward flow
+
+The current /api/task/complete endpoint remains the existing development/demo reward flow. For production advertising, replace it with verified ad/offer provider server-to-server postback verification. Do not rely on a browser timer alone.
+
+## Files
+
+- api/index.js
+- index.html
+- app.js
+- style.css
+- package.json
+- vercel.json
+- .env.example
+- README.md
