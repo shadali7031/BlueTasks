@@ -9,7 +9,7 @@ let state = {
 };
 
 const TADS_TGB_ID = "11984";
-const TADS_FULLSCREEN_ID = "11986";
+const TADS_FULLSCREEN_ID = "11990";
 let tadsFullscreenController = null;
 let pendingTadsTaskId = null;
 let tadsAdInProgress = false;
@@ -43,50 +43,77 @@ async function showTadsFullscreen(taskId) {
     toast("Ad system is loading. Try again.");
     return;
   }
+
   pendingTadsTaskId = taskId;
   tadsAdInProgress = true;
-  try {
-    if (!tadsFullscreenController) {
-      tadsFullscreenController = window.tads.init({
-        widgetId: TADS_FULLSCREEN_ID,
-        type: "fullscreen",
-        debug: false,
-        onShowReward: async (result) => {
-          const rewardedTask = pendingTadsTaskId;
-          pendingTadsTaskId = null;
-          tadsAdInProgress = false;
-          if (!rewardedTask) return;
-          try {
-            const d = await api("/api/task/complete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ taskId: rewardedTask, adProvider: "tads", adResult: result || null })
-            });
-            toast("Reward credited: " + (d.result?.reward || 0) + " BLC");
-            await load();
-          } catch (e) {
-            toast(e.message);
-          }
-        },
-        onAdsNotFound: () => {
-          pendingTadsTaskId = null;
-          tadsAdInProgress = false;
-          toast("No ad available right now. Try again later.");
-        }
+
+  const handleReward = async (result) => {
+    const rewardedTask = pendingTadsTaskId;
+    pendingTadsTaskId = null;
+    tadsAdInProgress = false;
+    if (!rewardedTask) return;
+
+    try {
+      const d = await api("/api/task/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: rewardedTask,
+          adProvider: "tads",
+          adResult: result || null
+        })
       });
+      toast("Reward credited: " + (d.result?.reward || 0) + " BLC");
+      await load();
+    } catch (e) {
+      toast(e.message);
     }
-    // TADS Fullscreen is shown directly with showAd().
-    // Calling loadAd() before every show can cause subsequent requests
-    // to fail after the first ad.
-    if (typeof tadsFullscreenController.showAd !== "function") {
+  };
+
+  const handleNoAd = () => {
+    pendingTadsTaskId = null;
+    tadsAdInProgress = false;
+    toast("No ad available right now. Try again later.");
+  };
+
+  const createController = () => window.tads.init({
+    widgetId: TADS_FULLSCREEN_ID,
+    type: "fullscreen",
+    debug: false,
+    onShowReward: handleReward,
+    onAdsNotFound: handleNoAd
+  });
+
+  try {
+    // Use TADS' existing controller when available. If a previous controller
+    // becomes stale/rejects, recreate it once and retry the show operation.
+    tadsFullscreenController =
+      window.tads.controllers?.[TADS_FULLSCREEN_ID] ||
+      tadsFullscreenController ||
+      createController();
+
+    if (!tadsFullscreenController || typeof tadsFullscreenController.showAd !== "function") {
       throw new Error("TADS fullscreen controller is not ready");
     }
-    await tadsFullscreenController.showAd();
+
+    try {
+      const result = tadsFullscreenController.showAd();
+      if (result && typeof result.catch === "function") {
+        await result;
+      }
+    } catch (firstError) {
+      console.warn("TADS first show failed, recreating controller:", firstError);
+      tadsFullscreenController = createController();
+      const retry = tadsFullscreenController?.showAd?.();
+      if (retry && typeof retry.catch === "function") {
+        await retry;
+      }
+    }
   } catch (e) {
     pendingTadsTaskId = null;
     tadsAdInProgress = false;
-    console.error("TADS fullscreen:", e);
-    toast("Unable to show ad right now. Try again later.");
+    console.error("TADS fullscreen error:", e);
+    toast("No ad available right now. Try again later.");
   }
 }
 
