@@ -37,14 +37,28 @@
           <p>Premium 3-minute task gives <b>30 BLC</b>. Daily limit: 3.</p>
           <button class="primary" onclick="openTab('tasks')">View Tasks</button>
         </div>
+
         <div class="grid">
-          <div class="stat card"><b id="todayEarned">0</b><span>Today claims</span></div>
-          <div class="stat card"><b id="refCount">0</b><span>Referrals</span></div>
+          <div class="stat card">
+            <b id="todayEarned">0</b>
+            <span>Today claims</span>
+          </div>
+          <div class="stat card">
+            <b id="refCount">0</b>
+            <span>Referrals</span>
+          </div>
         </div>
+
         <div class="card">
           <h3>Referral</h3>
           <p>Invite friends and build your referral network.</p>
-          <button class="secondary" onclick="copyReferral()">Copy referral link</button>
+          <button class="secondary" onclick="openTab('referral')">Open Referral</button>
+        </div>
+
+        <div class="card">
+          <h3>Help & Support</h3>
+          <p>Need help with tasks, withdrawals or your account?</p>
+          <button class="secondary" onclick="openTab('help')">Open Help</button>
         </div>
       </section>
 
@@ -56,10 +70,12 @@
       <section id="wallet" class="page hidden">
         <div class="card">
           <h2>Withdraw</h2>
+          <p class="muted">Minimum withdrawal: 1500 BLC</p>
           <input id="amount" type="number" min="1500" placeholder="Amount (min 1500)">
           <textarea id="payout" placeholder="UPI / payout details"></textarea>
           <button class="primary" onclick="withdraw()">Request withdrawal</button>
         </div>
+
         <div class="card">
           <h3>Withdrawal history</h3>
           <div id="withdrawals"></div>
@@ -73,14 +89,77 @@
           <p id="username">@username</p>
           <p class="muted" id="tgid"></p>
         </div>
+
         <div class="card">
           <h3>Referral link</h3>
           <input id="refLink" readonly>
           <button class="secondary" onclick="copyReferral()">Copy</button>
         </div>
       </section>
+
+      <section id="referral" class="page hidden">
+        <div class="card hero">
+          <h2>👥 Refer & Earn</h2>
+          <p>Invite your friends to BlueTasks using your referral link.</p>
+        </div>
+
+        <div class="card">
+          <h3>Your Referrals</h3>
+          <div class="stat">
+            <b id="referralPageCount">0</b>
+            <span>Total referrals</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Your Referral Link</h3>
+          <p class="muted">Share this link with your friends.</p>
+          <input id="referralPageLink" readonly placeholder="Referral link">
+          <button class="secondary" onclick="copyReferral()">Copy Referral Link</button>
+        </div>
+
+        <div class="card">
+          <h3>How it works</h3>
+          <p>1. Copy your referral link.</p>
+          <p>2. Share it with your friends.</p>
+          <p>3. When they join BlueTasks, your referral count will increase.</p>
+        </div>
+      </section>
+
+      <section id="help" class="page hidden">
+        <div class="card hero">
+          <h2>❓ Help & Support</h2>
+          <p>Find help for your BlueTasks account and rewards.</p>
+        </div>
+
+        <div class="card">
+          <h3>📋 Tasks</h3>
+          <p>Complete available tasks to earn BLC. Daily limits are shown on each task.</p>
+        </div>
+
+        <div class="card">
+          <h3>💰 Wallet</h3>
+          <p>Your earned BLC is shown in your wallet. The minimum withdrawal amount is 1500 BLC.</p>
+        </div>
+
+        <div class="card">
+          <h3>👥 Referral</h3>
+          <p>Copy your referral link and share it with your friends.</p>
+        </div>
+
+        <div class="card">
+          <h3>💸 Withdrawal</h3>
+          <p>Enter the amount and your payout details, then submit a withdrawal request.</p>
+        </div>
+
+        <div class="card">
+          <h3>🆘 Support</h3>
+          <p>If you have a problem with your account, task or withdrawal, contact BlueTasks support.</p>
+        </div>
+      </section>
     </main>
   </div>
+
   <div id="toast"></div>
   <script src="/app.js"></script>
 </body>
