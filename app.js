@@ -8,10 +8,6 @@ let state = {
   referralLink: ""
 };
 
-/* =========================
-   TELEGRAM WEB APP
-========================= */
-
 if (tg) {
   tg.ready();
   tg.expand();
@@ -24,54 +20,31 @@ if (tg) {
   }
 }
 
-
-/* =========================
-   TELEGRAM INIT DATA
-========================= */
-
 function initData() {
   return tg?.initData || "";
 }
 
-
-/* =========================
-   API
-========================= */
-
 async function api(url, options = {}) {
-
   options.headers = {
     ...(options.headers || {}),
     "x-telegram-init-data": initData()
   };
 
   const r = await fetch(url, options);
-
   const data = await r.json().catch(() => ({}));
 
   if (!r.ok || data.ok === false) {
-    throw new Error(
-      data.error || "Request failed"
-    );
+    throw new Error(data.error || "Request failed");
   }
 
   return data;
 }
 
-
-/* =========================
-   TOAST
-========================= */
-
 function toast(msg) {
-
-  const el =
-    document.getElementById("toast");
-
+  const el = document.getElementById("toast");
   if (!el) return;
 
   el.textContent = msg;
-
   el.classList.add("show");
 
   setTimeout(() => {
@@ -79,780 +52,280 @@ function toast(msg) {
   }, 2200);
 }
 
-
-/* =========================
-   OPEN TAB
-========================= */
-
 function openTab(tab) {
-
-  const page =
-    document.getElementById(tab);
+  const page = document.getElementById(tab);
 
   if (!page) {
     console.log("Tab not found:", tab);
     return;
   }
 
-  document
-    .querySelectorAll(".page")
-    .forEach(x => {
-      x.classList.add("hidden");
-    });
+  document.querySelectorAll(".page").forEach(x => {
+    x.classList.add("hidden");
+  });
 
   page.classList.remove("hidden");
 
-  document
-    .querySelectorAll(".tab")
-    .forEach(x => {
-      x.classList.toggle(
-        "active",
-        x.dataset.tab === tab
-      );
-    });
-
+  document.querySelectorAll(".tab").forEach(x => {
+    x.classList.toggle("active", x.dataset.tab === tab);
+  });
 }
 
-
-/* =========================
-   BOTTOM NAVIGATION
-========================= */
-
-document
-  .querySelectorAll(".tab")
-  .forEach(button => {
-
-    button.onclick = () => {
-      openTab(button.dataset.tab);
-    };
-
-  });
-
-
-/* =========================
-   GET TELEGRAM STARTAPP
-========================= */
-
-/*
-  These values will come from the bot later:
-
-  tasks
-  wallet
-  referral
-  profile
-  help
-  home
-*/
+document.querySelectorAll(".tab").forEach(button => {
+  button.onclick = () => openTab(button.dataset.tab);
+});
 
 function getStartAppSection() {
-
   try {
-
-    /* Telegram Mini App */
-    if (
-      tg &&
-      tg.initDataUnsafe &&
-      tg.initDataUnsafe.start_param
-    ) {
-
-      return String(
-        tg.initDataUnsafe.start_param
-      )
-        .toLowerCase()
-        .trim();
-
+    if (tg?.initDataUnsafe?.start_param) {
+      return String(tg.initDataUnsafe.start_param).toLowerCase().trim();
     }
 
-
-    /* Browser fallback/testing */
-
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
+    const params = new URLSearchParams(window.location.search);
 
     return (
       params.get("startapp") ||
       params.get("start") ||
       ""
-    )
-      .toLowerCase()
-      .trim();
-
+    ).toLowerCase().trim();
   } catch (e) {
-
-    console.log(
-      "Unable to read startapp:",
-      e
-    );
-
+    console.log("Unable to read startapp:", e);
     return "";
-
   }
-
 }
-
-
-/* =========================
-   OPEN STARTAPP SECTION
-========================= */
 
 function openStartAppSection() {
-
-  const section =
-    getStartAppSection();
-
-  if (!section) {
-    return;
-  }
-
-  console.log(
-    "BlueTasks opened with:",
-    section
-  );
-
+  const section = getStartAppSection();
+  if (!section) return;
 
   switch (section) {
-
     case "home":
-
       openTab("home");
-
       break;
-
-
     case "tasks":
-
       openTab("tasks");
-
       break;
-
-
     case "wallet":
-
       openTab("wallet");
-
       break;
-
-
     case "referral":
-
       openTab("referral");
-
       break;
-
-
     case "profile":
-
       openTab("profile");
-
       break;
-
-
     case "help":
-
       openTab("help");
-
       break;
-
-
     default:
-
-      console.log(
-        "Unknown startapp:",
-        section
-      );
-
+      console.log("Unknown startapp:", section);
       break;
-
   }
-
 }
-
-
-/* =========================
-   LOAD USER
-========================= */
 
 async function load() {
-
   if (!initData()) {
-
-    toast(
-      "Open this app inside Telegram"
-    );
-
+    toast("Open this app inside Telegram");
     return;
   }
-
 
   try {
-
-    const d =
-      await api("/api/me");
-
+    const d = await api("/api/me");
     state = d;
-
     render();
 
-
-    /*
-      Render complete hone ke baad
-      Telegram se aaye section ko open karein.
-    */
-
     setTimeout(() => {
-
       openStartAppSection();
-
     }, 100);
-
-
   } catch (e) {
-
     toast(e.message);
-
   }
-
 }
-
-
-/* =========================
-   RENDER
-========================= */
 
 function render() {
+  const u = state.user || {};
 
-  const u =
-    state.user || {};
+  const balance = document.getElementById("balance");
+  if (balance) balance.textContent = u.balance || 0;
 
+  const refCount = document.getElementById("refCount");
+  if (refCount) refCount.textContent = u.referral_count || 0;
 
-  /* Balance */
+  const todayEarned = document.getElementById("todayEarned");
+  if (todayEarned) todayEarned.textContent = state.claimsToday?.length || 0;
 
-  const balance =
-    document.getElementById(
-      "balance"
-    );
+  const initials = (
+    (u.first_name || "B")[0] +
+    (u.last_name || "T")[0]
+  ).toUpperCase();
 
-  if (balance) {
-    balance.textContent =
-      u.balance || 0;
-  }
+  const avatar = document.getElementById("avatar");
+  if (avatar) avatar.textContent = initials;
 
+  const bigAvatar = document.getElementById("bigAvatar");
+  if (bigAvatar) bigAvatar.textContent = initials;
 
-  /* Referral count */
-
-  const refCount =
-    document.getElementById(
-      "refCount"
-    );
-
-  if (refCount) {
-    refCount.textContent =
-      u.referral_count || 0;
-  }
-
-
-  /* Today claims */
-
-  const todayEarned =
-    document.getElementById(
-      "todayEarned"
-    );
-
-  if (todayEarned) {
-    todayEarned.textContent =
-      state.claimsToday?.length || 0;
-  }
-
-
-  /* Avatar */
-
-  const initials =
-    (
-      (u.first_name || "B")[0] +
-      (u.last_name || "T")[0]
-    ).toUpperCase();
-
-
-  const avatar =
-    document.getElementById(
-      "avatar"
-    );
-
-  if (avatar) {
-    avatar.textContent =
-      initials;
-  }
-
-
-  const bigAvatar =
-    document.getElementById(
-      "bigAvatar"
-    );
-
-  if (bigAvatar) {
-    bigAvatar.textContent =
-      initials;
-  }
-
-
-  /* Name */
-
-  const name =
-    document.getElementById(
-      "name"
-    );
-
+  const name = document.getElementById("name");
   if (name) {
-
     name.textContent =
-      [
-        u.first_name,
-        u.last_name
-      ]
-        .filter(Boolean)
-        .join(" ") ||
+      [u.first_name, u.last_name].filter(Boolean).join(" ") ||
       "Telegram User";
-
   }
 
-
-  /* Username */
-
-  const username =
-    document.getElementById(
-      "username"
-    );
-
+  const username = document.getElementById("username");
   if (username) {
-
-    username.textContent =
-      u.username
-        ? "@" + u.username
-        : "No username";
-
+    username.textContent = u.username ? "@" + u.username : "No username";
   }
 
+  const tgid = document.getElementById("tgid");
+  if (tgid) tgid.textContent = "Telegram ID: " + u.telegram_id;
 
-  /* Telegram ID */
+  const refLink = document.getElementById("refLink");
+  if (refLink) refLink.value = state.referralLink || "";
 
-  const tgid =
-    document.getElementById(
-      "tgid"
-    );
+  const referralPageCount = document.getElementById("referralPageCount");
+  if (referralPageCount) referralPageCount.textContent = u.referral_count || 0;
 
-  if (tgid) {
-
-    tgid.textContent =
-      "Telegram ID: " +
-      u.telegram_id;
-
-  }
-
-
-  /* Referral link */
-
-  const refLink =
-    document.getElementById(
-      "refLink"
-    );
-
-  if (refLink) {
-
-    refLink.value =
-      state.referralLink || "";
-
-  }
-
+  const referralPageLink = document.getElementById("referralPageLink");
+  if (referralPageLink) referralPageLink.value = state.referralLink || "";
 
   renderTasks();
-
   renderWithdrawals();
-
 }
-
-
-/* =========================
-   TASK CLAIM COUNT
-========================= */
 
 function claimCount(taskId) {
-
-  return (
-    state.claimsToday || []
-  )
-    .filter(
-      x => x.task_id === taskId
-    )
-    .length;
-
+  return (state.claimsToday || []).filter(x => x.task_id === taskId).length;
 }
 
-
-/* =========================
-   RENDER TASKS
-========================= */
-
 function renderTasks() {
-
-  const list =
-    document.getElementById(
-      "taskList"
-    );
-
-  if (!list) {
-    return;
-  }
+  const list = document.getElementById("taskList");
+  if (!list) return;
 
   list.innerHTML = "";
 
+  for (const t of state.tasks || []) {
+    const used = claimCount(t.id);
+    const remaining = Math.max(0, t.daily_limit - used);
 
-  for (
-    const t of state.tasks || []
-  ) {
-
-    const used =
-      claimCount(t.id);
-
-    const remaining =
-      Math.max(
-        0,
-        t.daily_limit - used
-      );
-
-
-    const div =
-      document.createElement(
-        "div"
-      );
-
-    div.className =
-      "task card";
-
+    const div = document.createElement("div");
+    div.className = "task card";
 
     div.innerHTML = `
-
       <div class="taskTop">
-
         <div>
-
-          <h3>
-            ${escapeHtml(t.name)}
-          </h3>
-
-          <p>
-            ${escapeHtml(
-              t.description ||
-              "Complete task and earn BLC"
-            )}
-          </p>
-
+          <h3>${escapeHtml(t.name)}</h3>
+          <p>${escapeHtml(t.description || "Complete task and earn BLC")}</p>
         </div>
-
         <div class="reward">
-
           +${t.reward}
-
           <small>BLC</small>
-
         </div>
-
       </div>
 
-
       <div class="taskBottom">
-
-        <span>
-          ${remaining}/${t.daily_limit}
-          left today
-        </span>
-
+        <span>${remaining}/${t.daily_limit} left today</span>
 
         <button
           class="primary small"
-          ${
-            remaining <= 0
-              ? "disabled"
-              : ""
-          }
+          ${remaining <= 0 ? "disabled" : ""}
           onclick="completeTask('${escapeHtml(t.id)}')"
         >
-
-          ${
-            remaining <= 0
-              ? "Limit reached"
-              : "Start task"
-          }
-
+          ${remaining <= 0 ? "Limit reached" : "Start task"}
         </button>
-
       </div>
-
     `;
 
-
     list.appendChild(div);
-
   }
-
 }
 
-
-/* =========================
-   COMPLETE TASK
-========================= */
-
-async function completeTask(
-  taskId
-) {
-
+async function completeTask(taskId) {
   try {
+    const d = await api("/api/task/complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ taskId })
+    });
 
-    /*
-      Existing task completion API.
-      Isko abhi change nahi kiya gaya.
-    */
-
-    const d =
-      await api(
-        "/api/task/complete",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            taskId
-          })
-        }
-      );
-
-
-    toast(
-      "Reward credited: " +
-      (
-        d.result?.reward || 0
-      ) +
-      " BLC"
-    );
-
-
+    toast("Reward credited: " + (d.result?.reward || 0) + " BLC");
     await load();
-
-
   } catch (e) {
-
     toast(e.message);
-
   }
-
 }
-
-
-/* =========================
-   WITHDRAW
-========================= */
 
 async function withdraw() {
+  const amount = Number(document.getElementById("amount")?.value);
+  const payoutDetails = document.getElementById("payout")?.value.trim();
 
-  const amount =
-    Number(
-      document.getElementById(
-        "amount"
-      )?.value
-    );
-
-
-  const payoutDetails =
-    document
-      .getElementById("payout")
-      ?.value
-      .trim();
-
-
-  if (
-    !amount ||
-    !payoutDetails
-  ) {
-
-    toast(
-      "Enter amount and payout details"
-    );
-
+  if (!amount || !payoutDetails) {
+    toast("Enter amount and payout details");
     return;
   }
-
 
   try {
+    await api("/api/withdraw", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ amount, payoutDetails })
+    });
 
-    await api(
-      "/api/withdraw",
-      {
+    toast("Withdrawal request submitted");
 
-        method: "POST",
+    const amountEl = document.getElementById("amount");
+    const payoutEl = document.getElementById("payout");
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-          amount,
-          payoutDetails
-        })
-
-      }
-    );
-
-
-    toast(
-      "Withdrawal request submitted"
-    );
-
-
-    const amountEl =
-      document.getElementById(
-        "amount"
-      );
-
-    const payoutEl =
-      document.getElementById(
-        "payout"
-      );
-
-
-    if (amountEl) {
-      amountEl.value = "";
-    }
-
-    if (payoutEl) {
-      payoutEl.value = "";
-    }
-
+    if (amountEl) amountEl.value = "";
+    if (payoutEl) payoutEl.value = "";
 
     await load();
-
-
   } catch (e) {
-
     toast(e.message);
-
   }
-
 }
-
-
-/* =========================
-   WITHDRAWAL HISTORY
-========================= */
 
 function renderWithdrawals() {
+  const el = document.getElementById("withdrawals");
+  if (!el) return;
 
-  const el =
-    document.getElementById(
-      "withdrawals"
-    );
-
-  if (!el) {
+  if (!state.withdrawals?.length) {
+    el.innerHTML = '<p class="muted">No withdrawals yet.</p>';
     return;
   }
 
-
-  if (
-    !state.withdrawals?.length
-  ) {
-
-    el.innerHTML =
-      '<p class="muted">No withdrawals yet.</p>';
-
-    return;
-
-  }
-
-
-  el.innerHTML =
-    state.withdrawals
-      .map(w => `
-
-        <div class="history">
-
-          <b>
-            ${w.amount} BLC
-          </b>
-
-          <span>
-            ${escapeHtml(
-              w.status
-            )}
-          </span>
-
-        </div>
-
-      `)
-      .join("");
-
+  el.innerHTML = state.withdrawals.map(w => `
+    <div class="history">
+      <b>${w.amount} BLC</b>
+      <span>${escapeHtml(w.status)}</span>
+    </div>
+  `).join("");
 }
-
-
-/* =========================
-   COPY REFERRAL
-========================= */
 
 function copyReferral() {
+  if (!state.referralLink) return;
 
-  if (
-    !state.referralLink
-  ) {
-    return;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(state.referralLink);
   }
 
-
-  if (
-    navigator.clipboard &&
-    navigator.clipboard.writeText
-  ) {
-
-    navigator.clipboard.writeText(
-      state.referralLink
-    );
-
-  }
-
-
-  toast(
-    "Referral link copied"
-  );
-
+  toast("Referral link copied");
 }
-
-
-/* =========================
-   ESCAPE HTML
-========================= */
 
 function escapeHtml(s) {
-
-  return String(s)
-    .replace(
-      /[&<>"']/g,
-      m => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      }[m])
-    );
-
+  return String(s).replace(
+    /[&<>"']/g,
+    m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[m])
+  );
 }
-
-
-/* =========================
-   START
-========================= */
 
 load();
