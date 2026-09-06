@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>BlueTasks</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://w.tads.me/widget.js"></script>
+  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
       <section class="balance card">
         <div class="label">Your Balance</div>
         <div class="money"><span id="balance">0</span> <small>BLC</small></div>
-        <div class="mini">Minimum withdrawal: 1500 BLC</div>
+        <div class="mini">1 BLC = ₹1 • Minimum withdrawal: 1500 BLC • Daily max: 240 BLC</div>
       </section>
 
       <div class="tabs">
@@ -35,24 +35,19 @@
       <section id="home" class="page">
         <div class="card hero">
           <h2>Complete tasks & earn</h2>
-          <p>Premium 3-minute task gives <b>30 BLC</b>. Daily limit: 3. Overall earning limit: <b>240 BLC/day</b>.</p>
+          <p>Premium task gives <b>30 BLC</b>, up to 3 times daily. Overall earning limit: <b>240 BLC/day</b>.</p>
           <button class="primary" onclick="openTab('tasks')">View Tasks</button>
         </div>
 
         <div class="grid">
           <div class="stat card">
-            <b id="todayEarned">0</b>
-            <span>Today earned / max</span>
+            <b id="todayEarned">0 / 240</b>
+            <span>Today earned / max BLC</span>
           </div>
           <div class="stat card">
             <b id="refCount">0</b>
             <span>Referrals</span>
           </div>
-        </div>
-
-        <div class="card adCard">
-          <div class="adLabel">ADVERTISEMENT</div>
-          <div id="tads-container-11984"></div>
         </div>
 
         <div class="card">
@@ -69,7 +64,10 @@
       </section>
 
       <section id="tasks" class="page hidden">
-        <div class="sectionTitle"><h2>Tasks</h2><span id="taskHint"></span></div>
+        <div class="sectionTitle">
+          <h2>Tasks</h2>
+          <span id="taskHint">Daily max: 240 BLC</span>
+        </div>
         <div id="taskList"></div>
       </section>
 
