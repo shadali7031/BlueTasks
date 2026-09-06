@@ -219,7 +219,10 @@ function render() {
   if (refCount) refCount.textContent = u.referral_count || 0;
 
   const todayEarned = document.getElementById("todayEarned");
-  if (todayEarned) todayEarned.textContent = state.claimsToday?.length || 0;
+  if (todayEarned) {
+    const earnedToday = (state.claimsToday || []).reduce((sum, c) => sum + Number(c.reward || 0), 0);
+    todayEarned.textContent = `${earnedToday} / 240 BLC`;
+  }
 
   const initials = (
     (u.first_name || "B")[0] +
@@ -255,6 +258,9 @@ function render() {
 
   const referralPageLink = document.getElementById("referralPageLink");
   if (referralPageLink) referralPageLink.value = state.referralLink || "";
+
+  const taskHint = document.getElementById("taskHint");
+  if (taskHint) taskHint.textContent = "Daily max: 240 BLC";
 
   renderTasks();
   renderWithdrawals();
@@ -297,7 +303,7 @@ function renderTasks() {
           ${remaining <= 0 ? "disabled" : ""}
           onclick="startTask('${escapeHtml(t.id)}')"
         >
-          ${remaining <= 0 ? "Limit reached" : (t.id === "premium3" ? "🎬 Watch Ad & Earn" : "Start task")}
+          ${remaining <= 0 ? "Limit reached" : "🎬 Watch Ad & Earn"}
         </button>
       </div>
     `;
@@ -309,11 +315,16 @@ function renderTasks() {
 async function startTask(taskId) {
   const task = (state.tasks || []).find(t => t.id === taskId);
   if (!task) return;
-  if (task.id === "premium3") {
-    await showTadsFullscreen(task.id);
+
+  const used = claimCount(taskId);
+  if (used >= Number(task.daily_limit || 0)) {
+    toast("Daily limit reached");
     return;
   }
-  await completeTask(taskId);
+
+  // Every earning task must pass through the TADS fullscreen ad first.
+  // The reward is credited only from the TADS onShowReward callback.
+  await showTadsFullscreen(taskId);
 }
 
 async function completeTask(taskId) {
